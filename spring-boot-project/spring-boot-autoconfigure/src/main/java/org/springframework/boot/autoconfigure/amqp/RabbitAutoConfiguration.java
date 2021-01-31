@@ -92,11 +92,17 @@ import org.springframework.core.io.ResourceLoader;
 @Import(RabbitAnnotationDrivenConfiguration.class)
 public class RabbitAutoConfiguration {
 
+	// TODO Move to spring-amqp `RabbitListenerConfigUtils`
+	public static final String RABBIT_ADMIN_BEAN_NAME = "amqpAdmin";
+
+	// TODO Move to spring-amqp `RabbitListenerConfigUtils`
+	public static final String RABBIT_CONNECTION_FACTORY_BEAN_NAME = "rabbitConnectionFactory";
+
 	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnMissingBean(ConnectionFactory.class)
 	protected static class RabbitConnectionFactoryCreator {
 
-		@Bean
+		@Bean(RABBIT_CONNECTION_FACTORY_BEAN_NAME)
 		public CachingConnectionFactory rabbitConnectionFactory(RabbitProperties properties,
 				ResourceLoader resourceLoader, ObjectProvider<CredentialsProvider> credentialsProvider,
 				ObjectProvider<CredentialsRefreshService> credentialsRefreshService,
@@ -187,7 +193,7 @@ public class RabbitAutoConfiguration {
 			return template;
 		}
 
-		@Bean
+		@Bean(RABBIT_ADMIN_BEAN_NAME)
 		@ConditionalOnSingleCandidate(ConnectionFactory.class)
 		@ConditionalOnProperty(prefix = "spring.rabbitmq", name = "dynamic", matchIfMissing = true)
 		@ConditionalOnMissingBean

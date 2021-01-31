@@ -5983,6 +5983,38 @@ See {spring-boot-autoconfigure-module-code}/amqp/RabbitProperties.java[`RabbitPr
 
 TIP: See https://spring.io/blog/2010/06/14/understanding-amqp-the-protocol-used-by-rabbitmq/[Understanding AMQP, the protocol used by RabbitMQ] for more details.
 
+===== Multiple RabbitMQ
+Additional RabbitMQ brokers can be configured through the properties under `+spring.multirabbitmq+`.
+All properties available under `+spring.rabbitmq+` are also available under `+spring.multirabbitmq.connections.[]+`.
+There is no strict limitation on the names assigned to the brokers or the number of different brokers that can be
+configured.
+
+For example, in the configuration below, there is one default broker provided at `+spring.rabbitmq+` and
+two additional brokers, provided under `+spring.multirabbitmq.connections.brokerA+` and
+`+spring.multirabbitmq.connections.brokerB+`:
+
+[source,yaml,indent=0,configprops,configblocks]
+----
+	spring:
+      rabbitmq:
+        host: "192.168.0.10"
+        port: 5672
+        username: "user"
+        password: "pass"
+	  multirabbitmq:
+        enabled: true
+        connections:
+          brokerA:
+            host: "10.10.10.10"
+            port: 5672
+            username: "admin"
+            password: "firstSecret"
+          brokerB:
+            host: "210.10.0.190"
+            port: 5672
+            username: "admin"
+            password: "secondSecret"
+----
 
 
 [[boot-features-using-amqp-sending]]
@@ -6110,6 +6142,88 @@ You can also customize the `RetryTemplate` programmatically by declaring a `Rabb
 IMPORTANT: By default, if retries are disabled and the listener throws an exception, the delivery is retried indefinitely.
 You can modify this behavior in two ways: Set the `defaultRequeueRejected` property to `false` so that zero re-deliveries are attempted or throw an `AmqpRejectAndDontRequeueException` to signal the message should be rejected.
 The latter is the mechanism used when retries are enabled and the maximum number of delivery attempts is reached.
+
+===== MultiRabbitMQ
+Once enabled, MultiRabbitMQ will instantiate multiple `RabbitListenerContainerFactory`, `AmqpAdmin` s and
+`ConnectionFactory` s and create an easy way of linking listeners to the different brokers provided.
+
+In the example below, there is a default and two additional brokers: `brokerA` and `brokerB`.
+
+[source,yaml,indent=0,configprops,configblocks]
+----
+	spring:
+      rabbitmq:
+        # ...
+	  multirabbitmq:
+        enabled: true
+        connections:
+          brokerA:
+            # ...
+          brokerB:
+            # ...
+----
+
+To link a listener to a broker, the listener must reference the proper `containerFactory`, which follows the same name
+as the connection entry. If no `containerFactory` is provided, the listener is linked to the default broker.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Component
+	public class MyListeners {
+
+		@RabbitListener(queues = "someQueue")
+		public void processMessageFromDefaultBroker(String content) {
+			// ...
+		}
+
+		@RabbitListener(queues = "someQueue", **containerFactory="brokerA"**)
+		public void processMessageFromBrokerA(String content) {
+			// ...
+		}
+
+		@RabbitListener(queues = "someQueue", **containerFactory="brokerB"**)
+		public void processMessageFromBrokerB(String content) {
+			// ...
+		}
+
+	}
+----
+
+To dispatch events, the connection factory must be bound to the proper instance by using `SimpleResourceHolder` or by
+using `ConnectionFactoryContextWrapper`.
+
+[source,java,indent=0]
+[subs="verbatim,quotes"]
+----
+	@Component
+	public class MyPublisher {
+
+	    private static final String EXCHANGE = "someExchange";
+	    private static final String RK = "someRoutingKey";
+
+        void sendMessageToDefaultBroker(String message) {
+            rabbitTemplate.convertAndSend(EXCHANGE, RK, message);
+        }
+
+        @Autowired
+        private RabbitTemplate template;
+
+        void sendMessageToBrokerA(String message) {
+            SimpleResourceHolder.bind(template.getConnectionFactory(), "brokerA");
+            rabbitTemplate.convertAndSend(EXCHANGE, RK, message);
+            SimpleResourceHolder.unbind(template.getConnectionFactory());
+        }
+
+        @Autowired
+        private ConnectionFactoryContextWrapper contextWrapper;
+
+        void sendMessageToBrokerB(String message) {
+        	contextWrapper.run("brokerB", () -> rabbitTemplate.convertAndSend(EXCHANGE, RK, message));
+        }
+
+    }
+----
 
 
 

@@ -1642,6 +1642,31 @@
       }
     },
     {
+      "name": "spring.rabbitmq.default-connection",
+      "type": "java.lang.String",
+      "description": "The name of the default connection.",
+      "deprecation": {
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.multirabbitmq.connections",
+      "type": "java.util.Map<java.lang.String,org.springframework.boot.autoconfigure.amqp.RabbitProperties>",
+      "description": "The Map containing all the connections.",
+      "deprecation": {
+        "level": "error"
+      }
+    },
+    {
+      "name": "spring.http.encoding.mapping",
+      "type": "java.util.Map<java.util.Locale,java.nio.charset.Charset>",
+      "description": "Locale in which to encode mapping.",
+      "deprecation": {
+        "replacement": "server.servlet.encoding.mapping",
+        "level": "error"
+      }
+    },
+    {
       "name": "spring.reactor.stacktrace-mode.enabled",
       "description": "Whether Reactor should collect stacktrace information at runtime.",
       "defaultValue": false,
